@@ -1,48 +1,12 @@
 # Reproducible Research: Peer Assessment 1
 
-
-## Loading and preprocessing the data
-
-
 ```r
-unzip("activity.zip")
-data <- read.csv("activity.csv")
-
-#format date
-data$date <- as.Date(data$date,"%Y-%m-%d")
-```
-## What is mean total number of steps taken per day?
-
-```r
-mean(data$steps, na.rm = TRUE)
-```
-
-```
-## [1] 37.3826
-```
-## What is the average daily activity pattern?
-
-```r
-#Aggregate steps per day
-meanSteps <- aggregate(steps ~ date, data, FUN = mean)
-with(meanSteps, plot(date, steps, type="l"))
-```
-
-![](PA1_template_files/figure-html/unnamed-chunk-3-1.png)
-
-## Imputing missing values
-
-```r
-#using the mice package
-library(mice)
+#Load required libraries
+library(mice, quietly = TRUE, warn.conflicts = FALSE, verbose = FALSE)
 ```
 
 ```
 ## Warning: package 'mice' was built under R version 3.2.5
-```
-
-```
-## Loading required package: Rcpp
 ```
 
 ```
@@ -54,7 +18,7 @@ library(mice)
 ```
 
 ```r
-library(Hmisc)
+library(Hmisc, quietly = TRUE, warn.conflicts = FALSE, verbose = FALSE)
 ```
 
 ```
@@ -62,35 +26,73 @@ library(Hmisc)
 ```
 
 ```
-## Loading required package: lattice
-```
-
-```
-## Loading required package: survival
-```
-
-```
-## Loading required package: Formula
-```
-
-```
-## Loading required package: ggplot2
-```
-
-```
 ## Warning: package 'ggplot2' was built under R version 3.2.5
 ```
 
+
+## Loading and preprocessing the data
+
+
+```r
+#unzip data
+unzip("activity.zip")
+#Load CSV
+data <- read.csv("activity.csv")
+
+#format date
+data$date <- as.Date(data$date,"%Y-%m-%d")
 ```
-## 
-## Attaching package: 'Hmisc'
+## What is mean total number of steps taken per day?
+
+```r
+#Aggregate steps per day
+meanSteps <- aggregate(steps ~ date, data, FUN = mean)
+hist(meanSteps$steps, xlab = "Steps per Day", main = "Histogram of Steps Taken Per Day")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-3-1.png)
+
+```r
+#Mean of steps taken per day
+mean(data$steps, na.rm = TRUE)
 ```
 
 ```
-## The following objects are masked from 'package:base':
-## 
-##     format.pval, round.POSIXt, trunc.POSIXt, units
+## [1] 37.3826
 ```
+
+```r
+#Median of steps taken per day
+median(data$steps, na.rm = TRUE)
+```
+
+```
+## [1] 0
+```
+## What is the average daily activity pattern?
+
+```r
+#five minute interval with the highest number of steps
+steps.int <- aggregate(steps ~ interval, data = data, FUN = mean)
+
+#Plot of means steps taken per day for a each interval
+with(steps.int, plot(interval, steps, xlab = "Interval", ylab = "Steps Taken", main = "Mean Steps Taken Per Day", type = "l"))
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-4-1.png)
+
+```r
+#Interval with maximum number of steps
+maxSteps <- steps.int[steps.int$steps == max(steps.int$steps),]
+head(maxSteps)
+```
+
+```
+##     interval    steps
+## 104      835 206.1698
+```
+
+## Imputing missing values
 
 ```r
 #Check for NA's before imputing, 2304 steps NA
@@ -110,31 +112,56 @@ impData <- data
 impData$steps <- with(impData, impute(steps,mean))
 
 #Check for NA's after imputing, Now no NA
-md.pattern(data)
+md.pattern(impData)
 ```
 
 ```
-##       date interval steps     
-## 15264    1        1     1    0
-##  2304    1        1     0    1
-##          0        0  2304 2304
+##      steps date interval  
+## [1,]     1    1        1 0
+## [2,]     0    0        0 0
+```
+
+```r
+#Aggregate steps per day for imputed dataset
+impDataSteps <- aggregate(steps ~ date, impData, FUN = mean)
+hist(impDataSteps$steps, xlab = "Steps per Day", main = "Mean Steps Taken Per Day")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-5-1.png)
+
+```r
+#Mean of steps taken per day
+mean(impDataSteps$steps, na.rm = TRUE)
+```
+
+```
+## [1] 37.3826
+```
+
+```r
+#Median of steps taken per day
+median(impDataSteps$steps, na.rm = TRUE)
+```
+
+```
+## [1] 37.3826
 ```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
 ```r
+impData$dayType <-  ifelse(as.POSIXlt(impData$date)$wday %in% c(0,6), 'weekend', 'weekday')
+
+
 #Plot weekdays and weekend
-weekd <- data[!(weekdays(as.Date(data$date)) %in% c('Saturday','Sunday')),]
-weekd_avg <-aggregate(steps ~ interval, data = weekd, FUN = mean)
-
-weeke <- data[(weekdays(as.Date(data$date)) %in% c('Saturday','Sunday')),]
-weeke_avg <-aggregate(steps ~ interval, data = weeke, FUN = mean)
-
-par(mfrow = c(2,1), mar=c(4,2,2,1))
-with(weekd_avg, plot(interval,steps, main="Weekdays", type = "l"))
-with(weeke_avg, plot(interval,steps, main="Weekend", type = "l"))
+impData_avg <- aggregate(steps ~ interval + dayType, data=impData, mean)
+ggplot(impData_avg, aes(interval, steps)) + 
+    geom_line() + 
+    facet_grid(dayType ~ .) +
+    xlab("5-minute interval") + 
+    ylab("Avarage number of steps")
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-5-1.png)
+![](PA1_template_files/figure-html/unnamed-chunk-6-1.png)
 
