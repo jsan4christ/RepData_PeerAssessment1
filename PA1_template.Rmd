@@ -8,18 +8,59 @@ output:
 
 ## Loading and preprocessing the data
 
+```{r}
+unzip("activity.zip")
+data <- read.csv("activity.csv")
 
+#format date
+data$date <- as.Date(data$date,"%Y-%m-%d")
 
+```
 ## What is mean total number of steps taken per day?
+```{r}
+mean(data$steps, na.rm = TRUE)
 
-
-
+```
 ## What is the average daily activity pattern?
+```{r}
+#Aggregate steps per day
+meanSteps <- aggregate(steps ~ date, data, FUN = mean)
+hist(meanSteps$steps, xlab = "Steps per Day", main = "Mean Steps Taken Per Day")
 
-
+#Use summary to generate mean and median of steps per day
+summary(meanSteps$steps)
+```
 
 ## Imputing missing values
+```{r}
+#using the mice package
+library(mice)
+library(Hmisc)
 
+#Check for NA's before imputing, 2304 steps NA
+md.pattern(data)
+
+#imputing the missing values by the mean
+impData <- data
+impData$steps <- with(impData, impute(steps,mean))
+
+#Check for NA's after imputing, Now no NA
+md.pattern(data)
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+#Plot weekdays and weekend
+weekd <- data[!(weekdays(as.Date(data$date)) %in% c('Saturday','Sunday')),]
+weekd_avg <-aggregate(steps ~ interval, data = weekd, FUN = mean)
+
+weeke <- data[(weekdays(as.Date(data$date)) %in% c('Saturday','Sunday')),]
+weeke_avg <-aggregate(steps ~ interval, data = weeke, FUN = mean)
+
+par(mfrow = c(2,1), mar=c(4,2,2,1))
+with(weekd_avg, plot(interval,steps, main="Weekdays", type = "l"))
+with(weeke_avg, plot(interval,steps, main="Weekend", type = "l"))
+
+```
+
